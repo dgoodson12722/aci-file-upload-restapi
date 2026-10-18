@@ -1,0 +1,28 @@
+---
+# Included once per entry in `expected_images` (loop_var: item = {label, filename}).
+# Appends one entry to `image_check_results` describing whether this image is
+# already present in the APIC's firmware repository (class firmwareFirmware).
+
+- name: "{{ item.label }}: look for a matching repository entry"
+  ansible.builtin.set_fact:
+    _matched_image: >-
+      {{
+        (repo_images | selectattr('isoname', 'equalto', item.filename) | list
+         + repo_images | selectattr('origFileName', 'equalto', item.filename) | list
+         + repo_images | selectattr('name', 'equalto', item.filename) | list)
+        | first | default({})
+      }}
+
+- name: "{{ item.label }}: record the result"
+  ansible.builtin.set_fact:
+    image_check_results: "{{ (image_check_results | default([])) + [_image_result] }}"
+  vars:
+    _image_result:
+      label: "{{ item.label }}"
+      filename: "{{ item.filename }}"
+      status: "{{ 'PRESENT' if (_matched_image | length > 0) else 'NOT FOUND' }}"
+      dnldStatus: "{{ _matched_image.dnldStatus | default('') }}"
+      syncCompleteStatus: "{{ _matched_image.syncCompleteStatus | default('') }}"
+      version: "{{ _matched_image.version | default('') }}"
+      size: "{{ _matched_image.size | default('') }}"
+      checksum: "{{ _matched_image.checksum | default('') }}"
